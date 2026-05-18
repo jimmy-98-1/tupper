@@ -74,7 +74,7 @@ export default function App() {
         <span style={{ ...styles.headerLogo, fontFamily: "'Playfair Display', serif" }}>
           Tupper
         </span>
-        <span style={{ fontSize: '0.72rem', letterSpacing: '0.08em', textTransform: 'uppercase', color: '#9aa08e' }}>
+        <span style={{ fontSize: '0.68rem', letterSpacing: '0.08em', textTransform: 'uppercase', color: '#9aa08e' }}>
           {new Date().toLocaleDateString('es-ES', { weekday: 'long', day: 'numeric', month: 'long' }).toUpperCase()}
         </span>
       </header>
@@ -176,6 +176,7 @@ const styles = {
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'space-between',
+    gap: '1rem',
     position: 'sticky',
     top: 0,
     zIndex: 10,

@@ -90,10 +90,10 @@ export default function Hoy({ onIrAPerfil }) {
       {hayMacros && (
         <div style={styles.macrosCard}>
           {[
-            { label: 'Calorías', valor: totalCalorias, unidad: 'kcal' },
-            { label: 'Proteínas', valor: totalProteinas, unidad: 'g' },
-            { label: 'Carbos', valor: totalCarbohidratos, unidad: 'g' },
-            { label: 'Grasas', valor: totalGrasas, unidad: 'g' },
+            { label: 'Calorías', valor: Math.round(totalCalorias), unidad: 'kcal' },
+            { label: 'Proteínas', valor: Math.round(totalProteinas), unidad: 'g' },
+            { label: 'Carbos', valor: Math.round(totalCarbohidratos), unidad: 'g' },
+            { label: 'Grasas', valor: Math.round(totalGrasas), unidad: 'g' },
           ].map(m => (
             <div key={m.label} style={styles.macroItem}>
               <span style={styles.macroValor}>{m.valor}<span style={styles.macroUnidad}>{m.unidad}</span></span>
