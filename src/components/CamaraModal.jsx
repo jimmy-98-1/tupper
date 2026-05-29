@@ -107,7 +107,7 @@ Todos los valores son números. kcal en kilocalorías, el resto en gramos por 10
 
         {fase === 'camara' && (
           <>
-            <div style={s.videoWrap}>
+            <div style={{ ...s.videoWrap, flex: 1 }}>
               <video ref={videoRef} autoPlay playsInline muted style={s.video} />
             </div>
             <canvas ref={canvasRef} style={{ display: 'none' }} />
@@ -118,7 +118,7 @@ Todos los valores son números. kcal en kilocalorías, el resto en gramos por 10
         {fase === 'preview' && fotoBase64 && (
           <>
             <canvas ref={canvasRef} style={{ display: 'none' }} />
-            <div style={s.videoWrap}>
+            <div style={{ ...s.videoWrap, flex: 1 }}>
               <img src={`data:image/jpeg;base64,${fotoBase64}`} alt="preview" style={s.video} />
             </div>
             <div style={s.fila}>
@@ -193,8 +193,9 @@ const s = {
     width: '100%',
     maxWidth: 480,
     padding: '1.25rem 1.25rem calc(1.25rem + env(safe-area-inset-bottom))',
-    maxHeight: '90vh',
-    overflowY: 'auto',
+    height: '90vh',
+    display: 'flex',
+    flexDirection: 'column',
   },
   header: {
     display: 'flex',
@@ -227,8 +228,10 @@ const s = {
     borderRadius: 12,
     overflow: 'hidden',
     background: '#000',
-    aspectRatio: '4/3',
+    width: '100%',
+    height: '42vh',
     marginBottom: '1rem',
+    flexShrink: 0,
   },
   video: {
     width: '100%',
