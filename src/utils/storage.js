@@ -5,6 +5,7 @@ const KEYS = {
   COMPRA:       'tupper_compra',
   API_KEY:      'tupper_api_key',
   COMPRA_FECHA: 'tupper_compra_fecha',
+  NUTRICION:    'tupper_nutricion',
 }
 
 // ── Usuario ──
@@ -63,6 +64,18 @@ export const removeCompraFecha = () => localStorage.removeItem(KEYS.COMPRA_FECHA
 // ── API Key ──
 export const getApiKey = () => localStorage.getItem(KEYS.API_KEY) || ''
 export const setApiKey = (key) => localStorage.setItem(KEYS.API_KEY, key)
+
+// ── Nutrición escaneada (valores por 100g por alimento) ──
+// Formato: { 'aceite de oliva': { kcal: 884, proteinas: 0, carbohidratos: 0, grasas: 100 } }
+export const getNutricion = () => {
+  try { return JSON.parse(localStorage.getItem(KEYS.NUTRICION)) || {} }
+  catch { return {} }
+}
+export const setNutricionAlimento = (nombre, datos) => {
+  const actual = getNutricion()
+  actual[nombre.toLowerCase().trim()] = datos
+  localStorage.setItem(KEYS.NUTRICION, JSON.stringify(actual))
+}
 
 // ── Helpers ──
 export const getFechaHoy = () => new Date().toISOString().split('T')[0]

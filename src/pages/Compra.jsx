@@ -2,7 +2,9 @@ import React, { useState, useEffect, useMemo } from 'react'
 import {
   getCompra, setCompra, getDieta,
   getCompraFecha, setCompraFecha, removeCompraFecha,
+  getNutricion, setNutricionAlimento,
 } from '../utils/storage'
+import CamaraModal from '../components/CamaraModal'
 
 function parseCantidad(str) {
   if (!str) return null
@@ -67,6 +69,8 @@ export default function Compra() {
   const [editTexto, setEditTexto]       = useState('')
   const [selectorId, setSelectorId]     = useState(null)
   const [nuevaSemana, setNuevaSemana]   = useState(false)
+  const [camaraItem, setCamaraItem]     = useState(null)
+  const [nutricion, setNutricion]       = useState({})
 
   useEffect(() => {
     const guardada = getCompra()
@@ -79,6 +83,8 @@ export default function Compra() {
       setCompra(generada)
       setCompraFecha(new Date().toISOString())
     }
+
+    setNutricion(getNutricion())
 
     const fechaGuardada = getCompraFecha()
     if (fechaGuardada) {
@@ -145,11 +151,23 @@ export default function Compra() {
     setCompraFecha(new Date().toISOString())
   }
 
+  const handleGuardarNutricion = (nombre, datos) => {
+    setNutricionAlimento(nombre, datos)
+    setNutricion(getNutricion())
+    setCamaraItem(null)
+  }
+
   const sinAsignar = useMemo(() => items.filter(i => i.supermercado === 'sin-asignar'), [items])
   const mercadona  = useMemo(() => items.filter(i => i.supermercado === 'mercadona'), [items])
   const lidl       = useMemo(() => items.filter(i => i.supermercado === 'lidl'), [items])
 
-  const itemProps = { editandoId, editTexto, selectorId, onToggle: toggleHecho, onEliminar: eliminar, onEditar: iniciarEdicion, onGuardarEdicion: guardarEdicion, onChangeEdit: setEditTexto, onAbrirSelector: setSelectorId, onCambiarSuper: cambiarSuper }
+  const itemProps = {
+    editandoId, editTexto, selectorId, nutricion,
+    onToggle: toggleHecho, onEliminar: eliminar, onEditar: iniciarEdicion,
+    onGuardarEdicion: guardarEdicion, onChangeEdit: setEditTexto,
+    onAbrirSelector: setSelectorId, onCambiarSuper: cambiarSuper,
+    onEscanear: setCamaraItem,
+  }
 
   return (
     <div className="fade-in">
@@ -253,6 +271,15 @@ export default function Compra() {
         </div>
       )}
 
+      {/* Modal cámara */}
+      {camaraItem && (
+        <CamaraModal
+          item={camaraItem}
+          onClose={() => setCamaraItem(null)}
+          onGuardar={handleGuardarNutricion}
+        />
+      )}
+
       {/* Añadir item */}
       <div style={{ marginTop: '1.25rem' }}>
         <div style={styles.addRow}>
@@ -277,9 +304,10 @@ export default function Compra() {
   )
 }
 
-function ItemCompra({ item, editandoId, editTexto, selectorId, onToggle, onEliminar, onEditar, onGuardarEdicion, onChangeEdit, onAbrirSelector, onCambiarSuper }) {
-  const editando    = editandoId === item.id
+function ItemCompra({ item, editandoId, editTexto, selectorId, nutricion, onToggle, onEliminar, onEditar, onGuardarEdicion, onChangeEdit, onAbrirSelector, onCambiarSuper, onEscanear }) {
+  const editando        = editandoId === item.id
   const selectorAbierto = selectorId === item.id
+  const escaneado       = !!nutricion?.[item.nombre.toLowerCase().trim()]
 
   return (
     <div style={{ ...styles.item, ...(item.hecho ? styles.itemHecho : {}) }}>
@@ -301,10 +329,7 @@ function ItemCompra({ item, editandoId, editTexto, selectorId, onToggle, onElimi
           />
         ) : (
           <>
-            <div
-              onClick={() => selectorAbierto ? onAbrirSelector(null) : onAbrirSelector(item.id)}
-              style={{ cursor: 'pointer' }}
-            >
+            <div style={{ cursor: 'pointer' }} onClick={() => selectorAbierto ? onAbrirSelector(null) : onAbrirSelector(item.id)}>
               <span style={{ ...styles.itemNombre, ...(item.hecho ? styles.itemNombreHecho : {}) }}>
                 {item.nombre}
               </span>
@@ -314,11 +339,13 @@ function ItemCompra({ item, editandoId, editTexto, selectorId, onToggle, onElimi
                 <span style={styles.itemCantidad}> · {item.cantidad}</span>
               ) : null}
             </div>
-            {selectorAbierto && (
-              <div style={styles.selectorSuper}>
-                {[
-                  { key: 'mercadona', label: '🟢 Mercadona' },
-                  { key: 'lidl',      label: '🔵 Lidl' },
+
+            {/* Fila inferior: pills supermercado + botón cámara */}
+            <div style={styles.filaPills}>
+              {selectorAbierto ? (
+                [
+                  { key: 'mercadona',   label: '🟢 Mercadona' },
+                  { key: 'lidl',        label: '🔵 Lidl' },
                   { key: 'sin-asignar', label: '⚪ Sin asignar' },
                 ].map(op => (
                   <button
@@ -331,9 +358,29 @@ function ItemCompra({ item, editandoId, editTexto, selectorId, onToggle, onElimi
                   >
                     {op.label}
                   </button>
-                ))}
-              </div>
-            )}
+                ))
+              ) : (
+                <button
+                  onClick={() => onAbrirSelector(item.id)}
+                  style={{
+                    ...styles.btnSelector,
+                    ...styles.btnSelectorActivo,
+                  }}
+                >
+                  {item.supermercado === 'mercadona' ? '🟢 Mercadona'
+                   : item.supermercado === 'lidl'    ? '🔵 Lidl'
+                   : '⚪ Sin asignar'}
+                </button>
+              )}
+
+              <button
+                onClick={() => onEscanear(item)}
+                style={styles.btnCamara}
+                title="Escanear etiqueta nutricional"
+              >
+                {escaneado ? '📷✓' : '📷'}
+              </button>
+            </div>
           </>
         )}
       </div>
@@ -472,11 +519,28 @@ const styles = {
     color: '#6b7f5a',
     fontWeight: 500,
   },
+  filaPills: {
+    display: 'flex',
+    gap: '0.3rem',
+    marginTop: '0.45rem',
+    flexWrap: 'wrap',
+    alignItems: 'center',
+  },
   selectorSuper: {
     display: 'flex',
     gap: '0.3rem',
     marginTop: '0.45rem',
     flexWrap: 'wrap',
+  },
+  btnCamara: {
+    fontSize: '1rem',
+    padding: '3px 10px',
+    borderRadius: 99,
+    border: '1px solid #cdd8bc',
+    background: '#faf8f3',
+    cursor: 'pointer',
+    transition: 'all 0.12s',
+    lineHeight: 1.4,
   },
   btnSelector: {
     fontSize: '0.72rem',

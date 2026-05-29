@@ -67,3 +67,7 @@ body {
 
 .fade-up  { animation: fadeUp 0.35s ease both; }
 .fade-in  { animation: fadeIn 0.25s ease both; }
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}

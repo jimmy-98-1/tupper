@@ -1,11 +1,41 @@
-import React, { useState, useEffect, useCallback } from 'react'
+import React, { useState, useEffect, useCallback, useMemo } from 'react'
 import TomaCard from '../components/TomaCard'
 import {
   getDieta,
   getDiaSemanaNombre,
   getCompletadasHoy,
   toggleCompletada,
+  getNutricion,
 } from '../utils/storage'
+
+function parsearGramos(cantidad) {
+  if (!cantidad) return null
+  const m = cantidad.match(/^(\d+(?:[.,]\d+)?)\s*gr?(?:amos?)?\b/i)
+  return m ? parseFloat(m[1].replace(',', '.')) : null
+}
+
+function enriquecerToma(toma, nutricion) {
+  if (!toma.alimentos || toma.alimentos.length === 0) return toma
+  let kcal = 0, proteinas = 0, carbohidratos = 0, grasas = 0
+  for (const alimento of toma.alimentos) {
+    const datos  = nutricion[alimento.nombre?.toLowerCase().trim()]
+    const gramos = parsearGramos(alimento.cantidad)
+    if (!datos || gramos === null) return toma  // falta alguno → usar datos del PDF
+    const f = gramos / 100
+    kcal          += datos.kcal          * f
+    proteinas     += datos.proteinas     * f
+    carbohidratos += datos.carbohidratos * f
+    grasas        += datos.grasas        * f
+  }
+  return {
+    ...toma,
+    calorias:      Math.round(kcal),
+    proteinas:     Math.round(proteinas),
+    carbohidratos: Math.round(carbohidratos),
+    grasas:        Math.round(grasas),
+    macrosExactos: true,
+  }
+}
 
 export default function Hoy({ onIrAPerfil }) {
   const [tomas, setTomas]           = useState([])
@@ -24,26 +54,31 @@ export default function Hoy({ onIrAPerfil }) {
 
     if (!diaData) { setSinDieta(true); return }
 
-    setTomas(diaData.tomas || [])
+    const nutricion = getNutricion()
+    const tomasEnriquecidas = (diaData.tomas || []).map(t => enriquecerToma(t, nutricion))
+    setTomas(tomasEnriquecidas)
     setSinDieta(false)
     setCompletadas(getCompletadasHoy())
   }, [])
 
   useEffect(() => { cargarDatos() }, [cargarDatos])
 
-  const handleToggle = (nombreToma) => {
+  const handleToggle = useCallback((nombreToma) => {
     const nuevas = toggleCompletada(nombreToma)
     setCompletadas(nuevas)
-  }
+  }, [])
 
-  const totalTomas   = tomas.length
-  const hechas       = completadas.length
-  const progreso     = totalTomas > 0 ? (hechas / totalTomas) * 100 : 0
-  const totalCalorias     = tomas.reduce((acc, t) => acc + (t.calorias || 0), 0)
-  const totalProteinas    = tomas.reduce((acc, t) => acc + (t.proteinas || 0), 0)
-  const totalCarbohidratos = tomas.reduce((acc, t) => acc + (t.carbohidratos || 0), 0)
-  const totalGrasas       = tomas.reduce((acc, t) => acc + (t.grasas || 0), 0)
-  const hayMacros = totalCalorias > 0 || totalProteinas > 0 || totalCarbohidratos > 0 || totalGrasas > 0
+  const macrosTotales = useMemo(() => {
+    const kcal  = tomas.reduce((acc, t) => acc + (t.calorias      || 0), 0)
+    const prot  = tomas.reduce((acc, t) => acc + (t.proteinas     || 0), 0)
+    const carb  = tomas.reduce((acc, t) => acc + (t.carbohidratos || 0), 0)
+    const gras  = tomas.reduce((acc, t) => acc + (t.grasas        || 0), 0)
+    return { kcal, prot, carb, gras, hayMacros: kcal > 0 || prot > 0 || carb > 0 || gras > 0 }
+  }, [tomas])
+
+  const totalTomas = tomas.length
+  const hechas     = completadas.length
+  const progreso   = totalTomas > 0 ? (hechas / totalTomas) * 100 : 0
 
   if (sinDieta) {
     return (
@@ -66,9 +101,14 @@ export default function Hoy({ onIrAPerfil }) {
     <div className="fade-in">
       {/* Cabecera del día */}
       <div style={styles.diaHeader}>
-        <h1 style={{ ...styles.titulo, fontFamily: "'Playfair Display', serif" }}>
-          Tu menú de hoy
-        </h1>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1rem' }}>
+          <h1 style={{ ...styles.titulo, marginBottom: 0, fontFamily: "'Playfair Display', serif" }}>
+            Tu menú de hoy
+          </h1>
+          <button onClick={cargarDatos} style={styles.btnRefresh} title="Actualizar macros">
+            🔄
+          </button>
+        </div>
 
         {/* Progreso */}
         <div style={styles.progresoWrap}>
@@ -87,13 +127,13 @@ export default function Hoy({ onIrAPerfil }) {
       </div>
 
       {/* Resumen macros del día */}
-      {hayMacros && (
+      {macrosTotales.hayMacros && (
         <div style={styles.macrosCard}>
           {[
-            { label: 'Calorías', valor: Math.round(totalCalorias), unidad: 'kcal' },
-            { label: 'Proteínas', valor: Math.round(totalProteinas), unidad: 'g' },
-            { label: 'Carbos', valor: Math.round(totalCarbohidratos), unidad: 'g' },
-            { label: 'Grasas', valor: Math.round(totalGrasas), unidad: 'g' },
+            { label: 'Calorías', valor: Math.round(macrosTotales.kcal), unidad: 'kcal' },
+            { label: 'Proteínas', valor: Math.round(macrosTotales.prot), unidad: 'g' },
+            { label: 'Carbos', valor: Math.round(macrosTotales.carb), unidad: 'g' },
+            { label: 'Grasas', valor: Math.round(macrosTotales.gras), unidad: 'g' },
           ].map(m => (
             <div key={m.label} style={styles.macroItem}>
               <span style={styles.macroValor}>{m.valor}<span style={styles.macroUnidad}>{m.unidad}</span></span>
@@ -135,8 +175,17 @@ const styles = {
     fontSize: '1.9rem',
     fontWeight: 500,
     color: '#1c1e18',
-    marginBottom: '1rem',
     letterSpacing: '-0.5px',
+  },
+  btnRefresh: {
+    background: 'none',
+    border: '1px solid #cdd8bc',
+    borderRadius: 10,
+    padding: '0.4rem 0.6rem',
+    cursor: 'pointer',
+    fontSize: '1rem',
+    color: '#4a5e3a',
+    flexShrink: 0,
   },
   progresoWrap: { marginBottom: '0.5rem' },
   progresoBar: {
